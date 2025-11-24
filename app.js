@@ -152,8 +152,9 @@ function setupEventListeners() {
 
     document.getElementById('sortBtn').addEventListener('click', toggleSort);
 
-    // Export button
-    document.getElementById('exportBtn').addEventListener('click', exportData);
+    // Export buttons
+    document.getElementById('exportJsonBtn').addEventListener('click', exportJSON);
+    document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
 
 
     // Density settings
@@ -1082,8 +1083,8 @@ function renderInsights() {
     `).join('');
 }
 
-// Export Data
-function exportData() {
+// Export Data as JSON
+function exportJSON() {
     const data = {
         casinos: casinos,
         transactions: transactions,
@@ -1105,8 +1106,54 @@ function exportData() {
     showConfirmation({
         icon: '✓',
         type: 'success',
-        title: 'Data Exported',
+        title: 'JSON Exported',
         subtitle: 'Your casino data has been downloaded as JSON'
+    });
+}
+
+// Export Data as CSV
+function exportCSV() {
+    // CSV Header
+    let csv = 'Casino,Website,Deposited,Redeemed,Profit,ROI %,Transactions,Notes\n';
+
+    // Add casino data
+    casinos.forEach(casino => {
+        const domain = getRootDomain(casino.url);
+        const roi = getROI(casino.deposited, casino.redeemed);
+        const txCount = getTransactionCount(casino.site);
+        const notes = casino.notes.replace(/"/g, '""'); // Escape quotes
+
+        csv += `"${casino.site}","${domain}",${casino.deposited.toFixed(2)},${casino.redeemed.toFixed(2)},${casino.profit.toFixed(2)},${roi.toFixed(1)},${txCount},"${notes}"\n`;
+    });
+
+    // Add empty row
+    csv += '\n';
+
+    // Add transactions section
+    csv += 'Transaction History\n';
+    csv += 'Date,Casino,Type,Amount,Note\n';
+
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(tx => {
+        const note = tx.note ? tx.note.replace(/"/g, '""') : '';
+        csv += `${tx.date},"${tx.casinoName}",${tx.type},${tx.amount.toFixed(2)},"${note}"\n`;
+    });
+
+    // Download CSV
+    const dataBlob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `casino-tracker-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showConfirmation({
+        icon: '✓',
+        type: 'success',
+        title: 'CSV Exported',
+        subtitle: 'Your casino data has been downloaded as CSV'
     });
 }
 
