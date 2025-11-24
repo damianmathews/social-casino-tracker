@@ -530,74 +530,147 @@ function generateInsights() {
     const metrics = calculateMetrics();
     const insights = [];
 
-    // ROI Insight
+    // Overall Performance
     if (metrics.roi > 50) {
         insights.push({
             type: 'positive',
             icon: '▲',
-            title: 'Excellent ROI',
-            body: `You're crushing it with a ${metrics.roi.toFixed(1)}% return on investment! Your strategy is clearly working.`
+            title: 'Crushing It!',
+            body: `You're absolutely killing it with a ${metrics.roi.toFixed(1)}% ROI. You've turned ${formatCurrency(metrics.deposited)} into ${formatCurrency(metrics.redeemed)} - that's ${formatCurrency(metrics.profit)} in pure profit!`
         });
     } else if (metrics.roi > 0) {
         insights.push({
             type: 'positive',
             icon: '▲',
-            title: 'Positive Returns',
-            body: `You're profitable with a ${metrics.roi.toFixed(1)}% ROI. Keep focusing on what's working!`
+            title: 'In The Green',
+            body: `You're up ${formatCurrency(metrics.profit)} overall with a ${metrics.roi.toFixed(1)}% ROI. ${metrics.profitableCasinos} out of ${metrics.activeCasinos} active casinos are profitable.`
         });
     } else if (metrics.roi < 0) {
         insights.push({
-            type: 'negative',
-            icon: '▼',
-            title: 'Negative ROI',
-            body: `Your current ROI is ${metrics.roi.toFixed(1)}%. Consider focusing on your most profitable casinos and cutting losses.`
+            type: 'warning',
+            icon: '~',
+            title: 'Variance Happens',
+            body: `You're currently down ${formatCurrency(Math.abs(metrics.profit))} but that's just variance. Your profitable casinos are working - focus on those winners.`
         });
     }
 
-    // Top Performers
-    const topCasinos = getTopCasinos(3);
+    // Top Performers - Deep Dive
+    const topCasinos = getTopCasinos(5);
     if (topCasinos.length > 0) {
+        const totalTopProfit = topCasinos.reduce((sum, c) => sum + c.profit, 0);
+        const avgROI = topCasinos.reduce((sum, c) => sum + getROI(c.deposited, c.redeemed), 0) / topCasinos.length;
+
         insights.push({
             type: 'positive',
             icon: '★',
-            title: 'Top Performers',
-            body: 'Your best casinos are:',
-            list: topCasinos.map(c => `${c.site}: ${formatCurrency(c.profit)} (${getROI(c.deposited, c.redeemed).toFixed(0)}% ROI)`)
+            title: 'Your Money Makers',
+            body: `These ${topCasinos.length} casinos have generated ${formatCurrency(totalTopProfit)} combined (${avgROI.toFixed(0)}% avg ROI). They're proven winners:`,
+            list: topCasinos.map(c => {
+                const roi = getROI(c.deposited, c.redeemed);
+                const txCount = getTransactionCount(c.site);
+                return `${c.site}: ${formatCurrency(c.profit)} profit on ${formatCurrency(c.deposited)} deposited (${roi.toFixed(0)}% ROI, ${txCount} transactions)`;
+            })
         });
     }
 
-    // Underperformers
-    const bottomCasinos = getBottomCasinos(3);
-    if (bottomCasinos.length > 0 && bottomCasinos[0].profit < -50) {
+    // You're Due! (Reframed negative casinos)
+    const bottomCasinos = getBottomCasinos(5).filter(c => c.deposited > 20);
+    if (bottomCasinos.length > 0) {
+        const totalInvested = bottomCasinos.reduce((sum, c) => sum + c.deposited, 0);
+        const totalLoss = Math.abs(bottomCasinos.reduce((sum, c) => sum + c.profit, 0));
+
         insights.push({
             type: 'warning',
-            icon: '!',
-            title: 'Consider Avoiding',
-            body: 'These casinos have significant losses:',
-            list: bottomCasinos.map(c => `${c.site}: ${formatCurrency(c.profit)}`)
+            icon: '◆',
+            title: "You're Super Due!",
+            body: `You've invested ${formatCurrency(totalInvested)} in these casinos and variance has hit hard. But that means you're due for a bounce back. The more you're down, the more potential upside:`,
+            list: bottomCasinos.map(c => {
+                const txCount = getTransactionCount(c.site);
+                return `${c.site}: Down ${formatCurrency(Math.abs(c.profit))} on ${formatCurrency(c.deposited)} deposited (${txCount} redemption${txCount !== 1 ? 's' : ''} logged) - due for a hit!`;
+            })
         });
     }
 
-    // Inactive Casinos
-    const inactiveCasinos = casinos.filter(c => c.deposited === 0 && c.redeemed === 0);
-    if (inactiveCasinos.length > 5) {
+    // Win Rate Analysis
+    const activeCasinos = casinos.filter(c => c.deposited > 0);
+    const profitable = activeCasinos.filter(c => c.profit > 0);
+    const breakEven = activeCasinos.filter(c => c.profit === 0);
+    const losing = activeCasinos.filter(c => c.profit < 0);
+
+    if (activeCasinos.length > 0) {
+        const winRate = (profitable.length / activeCasinos.length * 100).toFixed(0);
         insights.push({
-            type: 'warning',
+            type: 'positive',
+            icon: '▣',
+            title: 'Win Rate Analysis',
+            body: `Out of ${activeCasinos.length} active casinos:`,
+            list: [
+                `${profitable.length} are profitable (${winRate}% win rate)`,
+                `${losing.length} are in the red (variance working against you)`,
+                `${breakEven.length} are break-even`,
+                `Average profit per winning casino: ${formatCurrency(profitable.reduce((sum, c) => sum + c.profit, 0) / profitable.length)}`
+            ]
+        });
+    }
+
+    // Biggest Wins
+    const biggestWin = [...casinos].sort((a, b) => b.profit - a.profit)[0];
+    const biggestROI = [...casinos].filter(c => c.deposited > 10).sort((a, b) => getROI(b.deposited, b.redeemed) - getROI(a.deposited, a.redeemed))[0];
+
+    if (biggestWin && biggestWin.profit > 0) {
+        insights.push({
+            type: 'positive',
+            icon: '↑',
+            title: 'Biggest Wins',
+            body: 'Your most successful plays:',
+            list: [
+                `${biggestWin.site}: Your biggest winner at ${formatCurrency(biggestWin.profit)} profit`,
+                biggestROI ? `${biggestROI.site}: Best ROI at ${getROI(biggestROI.deposited, biggestROI.redeemed).toFixed(0)}% (turned ${formatCurrency(biggestROI.deposited)} into ${formatCurrency(biggestROI.redeemed)})` : ''
+            ].filter(Boolean)
+        });
+    }
+
+    // Volume Analysis
+    const highVolume = casinos.filter(c => c.deposited > 200).sort((a, b) => b.deposited - a.deposited).slice(0, 5);
+    if (highVolume.length > 0) {
+        const avgProfit = highVolume.reduce((sum, c) => sum + c.profit, 0) / highVolume.length;
+        insights.push({
+            type: 'positive',
+            icon: '◈',
+            title: 'High Volume Plays',
+            body: `You've put serious volume through these casinos (${formatCurrency(highVolume.reduce((sum, c) => sum + c.deposited, 0))} total deposited). Average result: ${avgProfit > 0 ? 'UP' : 'DOWN'} ${formatCurrency(Math.abs(avgProfit))} per casino:`,
+            list: highVolume.map(c => {
+                const roi = getROI(c.deposited, c.redeemed);
+                return `${c.site}: ${formatCurrency(c.deposited)} in, ${formatCurrency(c.redeemed)} out (${roi > 0 ? '+' : ''}${roi.toFixed(0)}%)`;
+            })
+        });
+    }
+
+    // Redemption Patterns
+    const withRedemptions = casinos.filter(c => c.redeemed > 0);
+    const avgRedemptionRate = withRedemptions.reduce((sum, c) => sum + (c.redeemed / c.deposited), 0) / withRedemptions.length;
+    const noRedemptions = casinos.filter(c => c.deposited > 50 && c.redeemed === 0);
+
+    if (withRedemptions.length > 0) {
+        insights.push({
+            type: 'positive',
             icon: '○',
-            title: 'Inactive Casinos',
-            body: `You have ${inactiveCasinos.length} casinos with no activity. Consider cleaning up your list.`
+            title: 'Redemption Patterns',
+            body: `You're cashing out at ${(avgRedemptionRate * 100).toFixed(0)}% of deposits on average across ${withRedemptions.length} casinos. ${noRedemptions.length > 0 ? `You have ${noRedemptions.length} casino${noRedemptions.length !== 1 ? 's' : ''} with $50+ deposited but no redemptions yet - those are pending wins waiting to hit!` : 'All casinos with deposits have redemptions logged.'}`,
+            list: noRedemptions.length > 0 ? noRedemptions.map(c => `${c.site}: ${formatCurrency(c.deposited)} deposited, ready to cash out`) : []
         });
     }
 
-    // Concentration Risk
+    // Concentration Analysis
     const topThreeProfit = getTopCasinos(3).reduce((sum, c) => sum + c.profit, 0);
-    const concentration = (topThreeProfit / metrics.profit) * 100;
-    if (concentration > 70 && casinos.length > 5) {
+    const concentration = metrics.profit > 0 ? (topThreeProfit / metrics.profit) * 100 : 0;
+
+    if (concentration > 50 && casinos.length > 5) {
         insights.push({
-            type: 'warning',
+            type: 'positive',
             icon: '~',
-            title: 'Concentration Risk',
-            body: `${concentration.toFixed(0)}% of your profit comes from just 3 casinos. Consider diversifying your strategy.`
+            title: 'Profit Concentration',
+            body: `${concentration.toFixed(0)}% of your total profit comes from just your top 3 casinos (${formatCurrency(topThreeProfit)}). You've found your sweet spots - consider putting more volume through these proven winners.`
         });
     }
 
