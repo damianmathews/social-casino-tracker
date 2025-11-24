@@ -315,11 +315,28 @@ function openEditCasino(index) {
 function handleAddTransaction(e) {
     e.preventDefault();
 
-    const casinoIndex = parseInt(document.getElementById('casinoSelect').value);
+    const casinoName = document.getElementById('casinoInput').value;
     const type = document.getElementById('transactionType').value;
     const amount = parseFloat(document.getElementById('transactionAmount').value);
     const date = document.getElementById('transactionDate').value || new Date().toISOString().split('T')[0];
     const note = document.getElementById('transactionNote').value;
+
+    // Find or create casino
+    let casinoIndex = casinos.findIndex(c => c.site.toLowerCase() === casinoName.toLowerCase());
+
+    if (casinoIndex === -1) {
+        // Create new casino
+        const newCasino = {
+            site: casinoName,
+            url: '',
+            deposited: 0,
+            redeemed: 0,
+            profit: 0,
+            notes: ''
+        };
+        casinos.push(newCasino);
+        casinoIndex = casinos.length - 1;
+    }
 
     const transaction = {
         casinoIndex,
@@ -367,9 +384,9 @@ function deleteTransaction(index) {
 }
 
 function populateCasinoSelect() {
-    const select = document.getElementById('casinoSelect');
-    select.innerHTML = casinos
-        .map((c, i) => `<option value="${i}">${c.site}</option>`)
+    const datalist = document.getElementById('casinoList');
+    datalist.innerHTML = casinos
+        .map(c => `<option value="${c.site}">`)
         .join('');
 }
 
@@ -674,6 +691,7 @@ function renderPerformanceBreakdown() {
 
 function renderROIDistribution() {
     const container = document.getElementById('roiDistributionChart');
+    if (!container) return;
 
     const ranges = [
         { label: '>100%', min: 100, max: Infinity },
@@ -686,12 +704,13 @@ function renderROIDistribution() {
     const distribution = ranges.map(range => ({
         label: range.label,
         count: casinos.filter(c => {
+            if (c.deposited === 0) return false;
             const roi = getROI(c.deposited, c.redeemed);
-            return roi > range.min && roi <= range.max;
+            return roi >= range.min && (range.max === Infinity ? true : roi < range.max);
         }).length
     }));
 
-    const maxCount = Math.max(...distribution.map(d => d.count));
+    const maxCount = Math.max(...distribution.map(d => d.count), 1);
 
     container.innerHTML = distribution.map(d => {
         const percent = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
@@ -701,7 +720,7 @@ function renderROIDistribution() {
                 <div class="roi-bar-track">
                     <div class="roi-bar-fill" style="width: ${percent}%; background: var(--accent);"></div>
                 </div>
-                <div class="roi-bar-value">${d.count} casinos</div>
+                <div class="roi-bar-value">${d.count} casino${d.count !== 1 ? 's' : ''}</div>
             </div>
         `;
     }).join('');
@@ -709,6 +728,8 @@ function renderROIDistribution() {
 
 function renderProfitLossDonut() {
     const container = document.getElementById('profitLossChart');
+    if (!container) return;
+
     const breakdown = getPerformanceBreakdown();
 
     const totalPositive = Math.abs(breakdown.positive.total);
@@ -767,6 +788,7 @@ function renderProfitLossDonut() {
 
 function renderTopOpportunities() {
     const container = document.getElementById('topOpportunities');
+    if (!container) return;
 
     // Find casinos with high ROI and reasonable volume
     const opportunities = casinos
@@ -793,6 +815,7 @@ function renderTopOpportunities() {
 
 function renderRiskAnalysis() {
     const container = document.getElementById('riskAnalysis');
+    if (!container) return;
 
     // Find casinos with significant losses or declining performance
     const risks = casinos
