@@ -141,6 +141,7 @@
                             <option value="inactive">Inactive</option>
                         </select>
                         <button id="sortBtn" class="btn btn-secondary compact">Sort: Profit ↓</button>
+                        <button id="exportBtn" class="btn btn-secondary compact">⤓ Export</button>
                     </div>
                 </div>
 
@@ -148,15 +149,17 @@
                     <table id="casinoTable" class="data-table">
                         <thead>
                             <tr>
+                                <th style="width: 30px;"></th>
                                 <th class="sortable" data-sort="site">Casino</th>
                                 <th>Link</th>
                                 <th class="sortable number" data-sort="deposited">Deposited</th>
                                 <th class="sortable number" data-sort="redeemed">Redeemed</th>
                                 <th class="sortable number" data-sort="profit">Profit</th>
                                 <th class="sortable number" data-sort="roi">ROI</th>
-                                <th class="number">Transactions</th>
-                                <th>Notes</th>
-                                <th class="actions-col">Actions</th>
+                                <th class="number">Txns</th>
+                                <th style="min-width: 200px;">Notes</th>
+                                <th class="actions-col">Quick Actions</th>
+                                <th class="actions-col"></th>
                             </tr>
                         </thead>
                         <tbody id="tableBody"></tbody>

@@ -585,6 +585,130 @@ body {
     border-color: var(--border-light);
 }
 
+.quick-action-btn {
+    padding: 4px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.15s;
+    min-width: 32px;
+}
+
+.quick-action-btn.deposit {
+    color: var(--negative);
+}
+
+.quick-action-btn.deposit:hover {
+    background: var(--negative-bg);
+    border-color: var(--negative);
+}
+
+.quick-action-btn.redemption {
+    color: var(--positive);
+}
+
+.quick-action-btn.redemption:hover {
+    background: var(--positive-bg);
+    border-color: var(--positive);
+}
+
+.expand-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.expand-btn:hover {
+    color: var(--text);
+    transform: scale(1.2);
+}
+
+.expand-btn.expanded {
+    transform: rotate(90deg);
+}
+
+.transaction-row {
+    background: var(--bg);
+}
+
+.transaction-row td {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+}
+
+.transaction-history {
+    padding: 16px;
+}
+
+.transaction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.transaction-item:last-child {
+    margin-bottom: 0;
+}
+
+.transaction-info {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.transaction-date {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    min-width: 80px;
+}
+
+.transaction-note {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.editable-notes {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 6px 8px;
+    border-radius: 4px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: inherit;
+    width: 100%;
+    min-height: 32px;
+    resize: vertical;
+    transition: all 0.15s;
+}
+
+.editable-notes:hover {
+    background: var(--bg);
+    border-color: var(--border);
+}
+
+.editable-notes:focus {
+    outline: none;
+    background: var(--bg);
+    border-color: var(--accent);
+}
+
 .badge {
     display: inline-block;
     padding: 2px 8px;

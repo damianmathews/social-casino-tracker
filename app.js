@@ -152,6 +152,9 @@ function setupEventListeners() {
 
     document.getElementById('sortBtn').addEventListener('click', toggleSort);
 
+    // Export button
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+
 
     // Density settings
     document.querySelectorAll('input[name="density"]').forEach(radio => {
@@ -881,12 +884,14 @@ function renderRiskAnalysis() {
     }).join('');
 }
 
+let expandedCasinos = new Set();
+
 function renderCasinosTable() {
     const tbody = document.getElementById('tableBody');
     const filtered = getFilteredCasinos();
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">No casinos found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 40px; color: var(--text-secondary);">No casinos found</td></tr>';
         return;
     }
 
@@ -895,9 +900,16 @@ function renderCasinosTable() {
         const domain = getRootDomain(casino.url);
         const roi = getROI(casino.deposited, casino.redeemed);
         const txCount = getTransactionCount(casino.site);
+        const casinoTxs = transactions.filter(t => t.casinoName === casino.site);
+        const isExpanded = expandedCasinos.has(originalIndex);
 
-        return `
-            <tr>
+        let mainRow = `
+            <tr data-casino-index="${originalIndex}">
+                <td>
+                    <button class="expand-btn ${isExpanded ? 'expanded' : ''}" onclick="toggleTransactionHistory(${originalIndex})" title="Show transactions">
+                        ▶
+                    </button>
+                </td>
                 <td><strong>${casino.site}</strong></td>
                 <td>${domain ? `<a href="https://${domain}" target="_blank" rel="noopener">${domain}</a>` : '-'}</td>
                 <td class="number">${formatCurrency(casino.deposited)}</td>
@@ -905,15 +917,146 @@ function renderCasinosTable() {
                 <td class="number ${getProfitClass(casino.profit)}">${formatCurrency(casino.profit)}</td>
                 <td class="number ${getProfitClass(roi)}">${roi.toFixed(1)}%</td>
                 <td class="number">${txCount}</td>
-                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${casino.notes}">${casino.notes}</td>
+                <td>
+                    <textarea class="editable-notes"
+                              data-index="${originalIndex}"
+                              placeholder="Add notes..."
+                              onblur="saveNotes(${originalIndex}, this.value)">${casino.notes}</textarea>
+                </td>
                 <td class="actions-col">
-                    <div class="table-actions">
-                        <button class="action-btn" onclick="openEditCasino(${originalIndex})">Edit</button>
+                    <div class="table-actions" style="gap: 6px;">
+                        <button class="quick-action-btn deposit" onclick="quickTransaction(${originalIndex}, 'deposit')" title="Quick deposit">-</button>
+                        <button class="quick-action-btn redemption" onclick="quickTransaction(${originalIndex}, 'redemption')" title="Quick redemption">+</button>
                     </div>
+                </td>
+                <td class="actions-col">
+                    <button class="action-btn" onclick="openEditCasino(${originalIndex})">Edit</button>
                 </td>
             </tr>
         `;
+
+        // Transaction history row
+        if (isExpanded && casinoTxs.length > 0) {
+            mainRow += `
+                <tr class="transaction-row">
+                    <td colspan="11">
+                        <div class="transaction-history">
+                            ${casinoTxs.sort((a, b) => new Date(b.date) - new Date(a.date)).map((tx, idx) => `
+                                <div class="transaction-item">
+                                    <div class="transaction-info">
+                                        <span class="transaction-date">${formatDate(tx.date)}</span>
+                                        <span class="badge ${tx.type}">${tx.type}</span>
+                                        <span class="transaction-amount ${tx.type === 'deposit' ? 'negative' : 'positive'}">${formatCurrency(tx.amount)}</span>
+                                        ${tx.note ? `<span class="transaction-note">${tx.note}</span>` : ''}
+                                    </div>
+                                    <button class="action-btn" onclick="deleteTransactionByTimestamp('${tx.timestamp}')" title="Delete transaction">Delete</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else if (isExpanded) {
+            mainRow += `
+                <tr class="transaction-row">
+                    <td colspan="11">
+                        <div class="transaction-history" style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            No transactions yet
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        return mainRow;
     }).join('');
+}
+
+function toggleTransactionHistory(index) {
+    if (expandedCasinos.has(index)) {
+        expandedCasinos.delete(index);
+    } else {
+        expandedCasinos.add(index);
+    }
+    renderCasinosTable();
+}
+
+function saveNotes(index, value) {
+    if (casinos[index].notes !== value) {
+        casinos[index].notes = value;
+        saveData();
+    }
+}
+
+function quickTransaction(casinoIndex, type) {
+    const amount = prompt(`Enter ${type} amount:`);
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+
+    const casino = casinos[casinoIndex];
+    const oldBalance = casino.profit;
+    const parsedAmount = parseFloat(amount);
+
+    // Create transaction
+    const transaction = {
+        casinoIndex,
+        casinoName: casino.site,
+        type,
+        amount: parsedAmount,
+        date: new Date().toISOString().split('T')[0],
+        note: '',
+        timestamp: new Date().toISOString()
+    };
+
+    transactions.push(transaction);
+
+    // Update casino totals
+    if (type === 'deposit') {
+        casino.deposited += parsedAmount;
+    } else {
+        casino.redeemed += parsedAmount;
+    }
+    casino.profit = casino.redeemed - casino.deposited;
+
+    const newBalance = casino.profit;
+    const balanceChange = newBalance - oldBalance;
+
+    saveData();
+    render();
+
+    // Show confirmation
+    showConfirmation({
+        icon: type === 'deposit' ? '↓' : '↑',
+        type: type,
+        title: `Quick ${type === 'deposit' ? 'Deposit' : 'Redemption'}`,
+        subtitle: `${formatCurrency(parsedAmount)} ${type === 'deposit' ? 'deposited to' : 'redeemed from'} ${casino.site}`,
+        balance: {
+            newBalance: newBalance,
+            change: balanceChange
+        }
+    });
+}
+
+function deleteTransactionByTimestamp(timestamp) {
+    const txIndex = transactions.findIndex(t => t.timestamp === timestamp);
+    if (txIndex === -1) return;
+
+    if (!confirm('Delete this transaction?')) return;
+
+    const transaction = transactions[txIndex];
+    const casinoIndex = casinos.findIndex(c => c.site === transaction.casinoName);
+
+    if (casinoIndex !== -1) {
+        if (transaction.type === 'deposit') {
+            casinos[casinoIndex].deposited -= transaction.amount;
+        } else {
+            casinos[casinoIndex].redeemed -= transaction.amount;
+        }
+        casinos[casinoIndex].profit = casinos[casinoIndex].redeemed - casinos[casinoIndex].deposited;
+    }
+
+    transactions.splice(txIndex, 1);
+    saveData();
+    render();
 }
 
 function renderInsights() {
@@ -937,6 +1080,34 @@ function renderInsights() {
             </div>
         </div>
     `).join('');
+}
+
+// Export Data
+function exportData() {
+    const data = {
+        casinos: casinos,
+        transactions: transactions,
+        exportDate: new Date().toISOString(),
+        version: '1.0'
+    };
+
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `casino-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showConfirmation({
+        icon: '✓',
+        type: 'success',
+        title: 'Data Exported',
+        subtitle: 'Your casino data has been downloaded as JSON'
+    });
 }
 
 // Confirmation Toast
