@@ -268,12 +268,26 @@ function handleAddCasino(e) {
     saveData();
     render();
     closeModal('addCasinoModal');
+
+    // Show confirmation
+    showConfirmation({
+        icon: '✓',
+        type: 'success',
+        title: 'Casino Added',
+        subtitle: `${newCasino.site} has been added to your tracker`,
+        balance: newCasino.deposited > 0 || newCasino.redeemed > 0 ? {
+            newBalance: newCasino.profit,
+            change: newCasino.profit
+        } : null
+    });
 }
 
 function handleEditCasino(e) {
     e.preventDefault();
 
     const index = parseInt(document.getElementById('editCasinoIndex').value);
+    const casinoName = casinos[index].site;
+
     casinos[index].site = document.getElementById('editCasinoName').value;
     casinos[index].url = document.getElementById('editCasinoUrl').value;
     casinos[index].notes = document.getElementById('editCasinoNotes').value;
@@ -281,6 +295,14 @@ function handleEditCasino(e) {
     saveData();
     render();
     closeModal('editCasinoModal');
+
+    // Show confirmation
+    showConfirmation({
+        icon: '✓',
+        type: 'success',
+        title: 'Casino Updated',
+        subtitle: `${casinoName} has been updated`
+    });
 }
 
 function handleDeleteCasino() {
@@ -323,6 +345,7 @@ function handleAddTransaction(e) {
 
     // Find or create casino
     let casinoIndex = casinos.findIndex(c => c.site.toLowerCase() === casinoName.toLowerCase());
+    let isNewCasino = false;
 
     if (casinoIndex === -1) {
         // Create new casino
@@ -336,7 +359,11 @@ function handleAddTransaction(e) {
         };
         casinos.push(newCasino);
         casinoIndex = casinos.length - 1;
+        isNewCasino = true;
     }
+
+    // Store old balance for comparison
+    const oldBalance = casinos[casinoIndex].profit;
 
     const transaction = {
         casinoIndex,
@@ -358,9 +385,24 @@ function handleAddTransaction(e) {
     }
     casinos[casinoIndex].profit = casinos[casinoIndex].redeemed - casinos[casinoIndex].deposited;
 
+    const newBalance = casinos[casinoIndex].profit;
+    const balanceChange = newBalance - oldBalance;
+
     saveData();
     render();
     closeModal('transactionModal');
+
+    // Show confirmation
+    showConfirmation({
+        icon: type === 'deposit' ? '↓' : '↑',
+        type: type,
+        title: `${type === 'deposit' ? 'Deposit' : 'Redemption'} Recorded`,
+        subtitle: `${formatCurrency(amount)} ${type === 'deposit' ? 'deposited to' : 'redeemed from'} ${casinoName}${isNewCasino ? ' (new casino)' : ''}`,
+        balance: {
+            newBalance: newBalance,
+            change: balanceChange
+        }
+    });
 }
 
 function deleteTransaction(index) {
@@ -895,6 +937,52 @@ function renderInsights() {
             </div>
         </div>
     `).join('');
+}
+
+// Confirmation Toast
+function showConfirmation(config) {
+    const toast = document.getElementById('confirmationToast');
+    const icon = document.getElementById('confirmationIcon');
+    const title = document.getElementById('confirmationTitle');
+    const subtitle = document.getElementById('confirmationSubtitle');
+    const balance = document.getElementById('confirmationBalance');
+
+    // Set icon
+    icon.textContent = config.icon || '✓';
+    icon.className = 'confirmation-icon ' + (config.type || 'success');
+
+    // Set text
+    title.textContent = config.title;
+    subtitle.textContent = config.subtitle || '';
+
+    // Set balance info if provided
+    if (config.balance) {
+        const arrow = config.balance.change > 0 ? '↑' : config.balance.change < 0 ? '↓' : '';
+        const arrowClass = config.balance.change > 0 ? 'up' : 'down';
+        const changeClass = config.balance.change > 0 ? 'positive' : config.balance.change < 0 ? 'negative' : '';
+
+        balance.innerHTML = `
+            <span class="balance-label">New Balance:</span>
+            <span class="balance-value">${formatCurrency(config.balance.newBalance)}</span>
+            ${config.balance.change !== 0 ? `
+                <span class="balance-change ${changeClass}">
+                    <span class="balance-arrow ${arrowClass}">${arrow}</span>
+                    ${formatCurrency(Math.abs(config.balance.change))}
+                </span>
+            ` : ''}
+        `;
+        balance.style.display = 'flex';
+    } else {
+        balance.style.display = 'none';
+    }
+
+    // Show toast
+    toast.classList.add('show');
+
+    // Auto hide after 4 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 4000);
 }
 
 // Start the app

@@ -987,6 +987,171 @@ body.density-dense .data-table {
     }
 }
 
+/* Confirmation Toast */
+.confirmation-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    min-width: 320px;
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.confirmation-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.confirmation-content {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.confirmation-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    flex-shrink: 0;
+    animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.confirmation-icon.success {
+    background: var(--positive-bg);
+    color: var(--positive);
+}
+
+.confirmation-icon.deposit {
+    background: var(--negative-bg);
+    color: var(--negative);
+}
+
+.confirmation-icon.redemption {
+    background: var(--positive-bg);
+    color: var(--positive);
+}
+
+.confirmation-details {
+    flex: 1;
+}
+
+.confirmation-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.confirmation-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.confirmation-balance {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 6px;
+    margin-top: 8px;
+}
+
+.balance-label {
+    color: var(--text-secondary);
+}
+
+.balance-value {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.balance-change {
+    margin-left: auto;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.balance-change.positive {
+    color: var(--positive);
+}
+
+.balance-change.negative {
+    color: var(--negative);
+}
+
+.balance-arrow {
+    font-size: 1.2rem;
+    animation: bounce 0.6s ease-in-out;
+}
+
+.balance-arrow.up {
+    animation: bounceUp 0.6s ease-in-out;
+}
+
+.balance-arrow.down {
+    animation: bounceDown 0.6s ease-in-out;
+}
+
+@keyframes scaleIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes bounceUp {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    25% {
+        transform: translateY(-4px);
+    }
+    50% {
+        transform: translateY(0);
+    }
+    75% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes bounceDown {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    25% {
+        transform: translateY(4px);
+    }
+    50% {
+        transform: translateY(0);
+    }
+    75% {
+        transform: translateY(2px);
+    }
+}
+
 /* Utilities */
 .hidden {
     display: none !important;
